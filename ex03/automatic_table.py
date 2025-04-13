@@ -7,22 +7,31 @@ def main():
     host=localhost
     dbname=piscineds
     user=gcorreia
+    password=mysecretpassword
     """
     files = get_csv_files("subject/customer")
+    try:
+        assert len(files) > 0, "No csv files retrieved from subject/customer"
+    except Exception as e:
+        print(f"{type(e).__name__}: {e}")
+        exit(1)
 
     with psycopg.connect(connect_string) as conn:
         with conn.cursor() as cur:
             try:
                 create_type(cur)
+                print("Event type created")
             except Exception as e:
                 print(f"Error: {e}")
                 conn.rollback()
             for f in files:
                 try:
+                    print(f"Copying content from {f.name}")
                     create_table(cur, f)
                     copy_content(cur, f)
+                    print(f"Copied content from {f.name}")
                 except Exception as e:
-                    print(f"Error at file {f.name}: {e}")
+                    print(f"{type(e).__name__} at file {f.name}: {e}")
                     conn.rollback()
 
 
@@ -44,7 +53,7 @@ def create_table(cur: psycopg.Cursor, file: Path):
     """Creates the table acording to the file name"""
 
     cur.execute(f"""
-        CREATE TABLE {file.name[-4]} (
+        CREATE TABLE {file.name[:-4]} (
             event_time timestamp with time zone,
             event_type event,
             product_id integer,
@@ -59,7 +68,7 @@ def copy_content(cur: psycopg.Cursor, file: Path):
     """Copies data from the file to it's respective table"""
 
     sql_copy = f"""
-        COPY {file.name[-4]}
+        COPY {file.name[:-4]}
         FROM STDIN
         WITH (
             FORMAT CSV,
