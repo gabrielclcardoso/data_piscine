@@ -34,6 +34,17 @@ def main():
                 except Exception as e:
                     print(f"{type(e).__name__}: {e}")
                     conn.rollback()
+
+                try:
+                    f.seek(0)
+                    print(f"Copying content from {f.name}")
+                    copy_content(cur, f)
+                    print(f"Copied content from {f.name}")
+                except Exception as e:
+                    print(f"{type(e).__name__}: {e}")
+                    conn.rollback()
+
+
 def get_sets(file):
     """Reads the items.csv file and returns a dictonary with 2 sets, one
     representing the options for category code and one representing the options
@@ -62,7 +73,7 @@ def create_types(cur: psycopg.Cursor, sets: dict):
 
 
 def create_table(cur: psycopg.Cursor):
-    """Creates the table acording to the file name"""
+    """Creates the items table """
 
     cur.execute("""
         CREATE TABLE items (
@@ -74,6 +85,21 @@ def create_table(cur: psycopg.Cursor):
     """)
 
     print("items table created")
+
+
+def copy_content(cur: psycopg.Cursor, file):
+    """Copies data from the file to it's respective table"""
+
+    sql_copy = """
+        COPY items
+        FROM STDIN
+        WITH (
+            FORMAT CSV,
+            HEADER TRUE
+        );
+    """
+    with cur.copy(sql_copy) as copy:
+        copy.write(file.read())
 
 
 if __name__ == "__main__":
