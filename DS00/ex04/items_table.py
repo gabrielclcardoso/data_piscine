@@ -1,6 +1,7 @@
 import csv
 from sys import stderr
 
+import psycopg
 
 def main():
 
@@ -9,17 +10,31 @@ def main():
     except Exception as e:
         print(f"{type(e).__name__}: {e}", file=stderr)
         exit(1)
+def main():
+    connect_string = """
+    host=localhost
+    dbname=piscineds
+    user=gcorreia
+    password=mysecretpassword
+    """
 
-    with f:
+    with open("subject/item/item.csv") as f:
         try:
-            enums = get_sets(f)
-            print(enums)
+            sets = get_sets(f)
+            print(sets)
         except Exception as e:
-            print("Error: make sure the csv file is correctly formatted",
+            print("Error: make sure the csv file is correct",
                   file=stderr)
             print(f"{type(e).__name__}: {e}", file=stderr)
             exit(1)
 
+        with psycopg.connect(connect_string) as conn:
+            with conn.cursor() as cur:
+                try:
+                    create_types(cur, sets)
+                except Exception as e:
+                    print(f"{type(e).__name__}: {e}")
+                    conn.rollback()
 
 def get_sets(file):
     """Reads the items.csv file and returns a dictonary with 2 sets, one
@@ -35,6 +50,17 @@ def get_sets(file):
         sets['brand'].add(row['brand'])
 
     return sets
+
+
+def create_types(cur: psycopg.Cursor, sets: dict):
+    """Creates the 3 types needed for the item database"""
+
+    for key, value in sets.items():
+        cur.execute(f"CREATE TYPE {key} as ENUM {tuple(value)};")
+        print(f"{key} type created")
+
+    sql = "CREATE DOMAIN category_id AS TEXT CHECK (VALUE ~ '^[0-9]+$')"
+    cur.execute(sql)
 
 
 if __name__ == "__main__":
