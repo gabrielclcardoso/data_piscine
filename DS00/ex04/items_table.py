@@ -3,13 +3,7 @@ from sys import stderr
 
 import psycopg
 
-def main():
 
-    try:
-        f = open("subject/item/item.csv")
-    except Exception as e:
-        print(f"{type(e).__name__}: {e}", file=stderr)
-        exit(1)
 def main():
     connect_string = """
     host=localhost
@@ -21,7 +15,6 @@ def main():
     with open("subject/item/item.csv") as f:
         try:
             sets = get_sets(f)
-            print(sets)
         except Exception as e:
             print("Error: make sure the csv file is correct",
                   file=stderr)
@@ -36,6 +29,11 @@ def main():
                     print(f"{type(e).__name__}: {e}")
                     conn.rollback()
 
+                try:
+                    create_table(cur)
+                except Exception as e:
+                    print(f"{type(e).__name__}: {e}")
+                    conn.rollback()
 def get_sets(file):
     """Reads the items.csv file and returns a dictonary with 2 sets, one
     representing the options for category code and one representing the options
@@ -56,11 +54,26 @@ def create_types(cur: psycopg.Cursor, sets: dict):
     """Creates the 3 types needed for the item database"""
 
     for key, value in sets.items():
-        cur.execute(f"CREATE TYPE {key} as ENUM {tuple(value)};")
+        cur.execute(f"CREATE TYPE {key}_type as ENUM {tuple(value)};")
         print(f"{key} type created")
 
-    sql = "CREATE DOMAIN category_id AS TEXT CHECK (VALUE ~ '^[0-9]+$')"
+    sql = "CREATE DOMAIN category_id_type AS TEXT CHECK (VALUE ~ '^[0-9]+$')"
     cur.execute(sql)
+
+
+def create_table(cur: psycopg.Cursor):
+    """Creates the table acording to the file name"""
+
+    cur.execute("""
+        CREATE TABLE items (
+            product_id integer,
+            category_id category_id_type,
+            category_code category_code_type,
+            brand brand_type
+        );
+    """)
+
+    print("items table created")
 
 
 if __name__ == "__main__":
