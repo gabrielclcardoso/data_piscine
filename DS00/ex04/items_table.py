@@ -13,36 +13,14 @@ def main():
     """
 
     with open("subject/item/item.csv") as f:
-        try:
-            sets = get_sets(f)
-        except Exception as e:
-            print("Error: make sure the csv file is correct",
-                  file=stderr)
-            print(f"{type(e).__name__}: {e}", file=stderr)
-            exit(1)
+        sets = get_sets(f)
 
         with psycopg.connect(connect_string) as conn:
             with conn.cursor() as cur:
-                try:
-                    create_types(cur, sets)
-                except Exception as e:
-                    print(f"{type(e).__name__}: {e}")
-                    conn.rollback()
-
-                try:
-                    create_table(cur)
-                except Exception as e:
-                    print(f"{type(e).__name__}: {e}")
-                    conn.rollback()
-
-                try:
-                    f.seek(0)
-                    print(f"Copying content from {f.name}")
-                    copy_content(cur, f)
-                    print(f"Copied content from {f.name}")
-                except Exception as e:
-                    print(f"{type(e).__name__}: {e}")
-                    conn.rollback()
+                create_types(cur, sets)
+                create_table(cur)
+                f.seek(0)
+                copy_content(cur, f)
 
 
 def get_sets(file):
@@ -54,9 +32,15 @@ def get_sets(file):
     table = csv.DictReader(file)
     sets = {'category_code': set(), 'brand': set()}
 
-    for row in table:
-        sets['category_code'].add(row['category_code'])
-        sets['brand'].add(row['brand'])
+    try:
+        for row in table:
+            sets['category_code'].add(row['category_code'])
+            sets['brand'].add(row['brand'])
+    except Exception as e:
+        print("Error: make sure the csv file is correct",
+              file=stderr)
+        print(f"{type(e).__name__}: {e}", file=stderr)
+        exit(1)
 
     return sets
 
@@ -64,25 +48,33 @@ def get_sets(file):
 def create_types(cur: psycopg.Cursor, sets: dict):
     """Creates the 3 types needed for the item database"""
 
-    for key, value in sets.items():
-        cur.execute(f"CREATE TYPE {key}_type as ENUM {tuple(value)};")
-        print(f"{key} type created")
-
     sql = "CREATE DOMAIN category_id_type AS TEXT CHECK (VALUE ~ '^[0-9]+$')"
-    cur.execute(sql)
+
+    try:
+        for key, value in sets.items():
+            cur.execute(f"CREATE TYPE {key}_type as ENUM {tuple(value)};")
+            print(f"{key} type created")
+        cur.execute(sql)
+    except Exception as e:
+        print(f"{type(e).__name__}: {e}")
+        exit(1)
 
 
 def create_table(cur: psycopg.Cursor):
     """Creates the items table """
 
-    cur.execute("""
-        CREATE TABLE items (
-            product_id integer,
-            category_id category_id_type,
-            category_code category_code_type,
-            brand brand_type
-        );
-    """)
+    try:
+        cur.execute("""
+            CREATE TABLE items (
+                product_id integer,
+                category_id category_id_type,
+                category_code category_code_type,
+                brand brand_type
+            );
+        """)
+    except Exception as e:
+        print(f"{type(e).__name__}: {e}")
+        exit(1)
 
     print("items table created")
 
@@ -98,8 +90,16 @@ def copy_content(cur: psycopg.Cursor, file):
             HEADER TRUE
         );
     """
-    with cur.copy(sql_copy) as copy:
-        copy.write(file.read())
+    print(f"Copying content from {file.name}")
+
+    try:
+        with cur.copy(sql_copy) as copy:
+            copy.write(file.read())
+    except Exception as e:
+        print(f"{type(e).__name__}: {e}")
+        exit(1)
+
+    print(f"Copied content from {file.name}")
 
 
 if __name__ == "__main__":
