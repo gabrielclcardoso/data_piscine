@@ -49,6 +49,7 @@ def create_table(cur: psycopg.Cursor):
 
     cur.execute("""
         CREATE TABLE customers (
+            id SERIAL PRIMARY KEY,
             event_time timestamp with time zone,
             event_type event,
             product_id integer,
@@ -63,7 +64,9 @@ def copy_content(cur: psycopg.Cursor, file: Path):
     """Copies data from the file to customers table"""
 
     sql_copy = """
-        COPY customers
+        COPY customers (
+            event_time, event_type, product_id, price, user_id, user_session
+        )
         FROM STDIN
         WITH (
             FORMAT CSV,
