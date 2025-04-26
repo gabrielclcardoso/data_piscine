@@ -1,5 +1,5 @@
 services:
-  ds01_db:
+  db:
     image: postgres
     container_name: postgres_db
     restart: always
@@ -10,9 +10,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ds01_pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
 
-  ds01_pgadmin:
+  pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin
     environment:
@@ -21,7 +21,7 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - ds01_db
+      - db
 
 volumes:
-  ds01_pgdata:
+  pgdata:
