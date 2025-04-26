@@ -1,90 +1,40 @@
 import psycopg
-from pathlib import Path
+from sys import stderr
 
 
 def main():
-    connect_string = """
-    host=localhost
-    dbname=piscineds
-    user=gcorreia
-    password=mysecretpassword
-    """
-    files = get_csv_files("subject/customer")
+    db_connection_params = {
+        'dbname': 'piscineds',
+        'user': 'gcorreia',
+        'password': 'mysecretpassword',
+        'host': 'localhost'
+    }
 
-    try:
-        assert len(files) > 0, "No csv files retrieved from subject/customer"
-    except Exception as e:
-        print(f"{type(e).__name__}: {e}")
-        exit(1)
-
-    with psycopg.connect(connect_string) as conn:
+    with psycopg.connect(**db_connection_params) as conn:
         with conn.cursor() as cur:
-            create_type(cur)
-            create_table(cur)
-            for f in files:
-                copy_content(cur, f)
+            table_names = get_table_names(cur)
+            if not table_names:
+                return 1
+            print(table_names)
 
 
-def get_csv_files(path: str) -> list[Path]:
-    """Returns a list of csv files in the given directory"""
-
-    dir = Path(path)
-    return list(dir.glob("**/*.csv"))
-
-
-def create_type(cur: psycopg.Cursor):
-    """Creates the type event on the database"""
-
-    events = ('cart', 'view', 'remove_from_cart', 'purchase')
-
-    try:
-        cur.execute(f"CREATE TYPE event as ENUM {events};")
-    except Exception as e:
-        print(f"{type(e).__name__}: {e}")
-        exit(1)
-
-
-def create_table(cur: psycopg.Cursor):
-    """Creates the table customers on the postgres DB"""
-
-    cur.execute("""
-        CREATE TABLE customers (
-            id SERIAL PRIMARY KEY,
-            event_time timestamp with time zone,
-            event_type event,
-            product_id integer,
-            price real,
-            user_id bigint,
-            user_session char(36)
-        );
-    """)
-
-
-def copy_content(cur: psycopg.Cursor, file: Path):
-    """Copies data from the file to customers table"""
-
-    sql_copy = """
-        COPY customers (
-            event_time, event_type, product_id, price, user_id, user_session
-        )
-        FROM STDIN
-        WITH (
-            FORMAT CSV,
-            HEADER TRUE
-        );
+def get_table_names(cur: psycopg.Cursor) -> list:
+    """Returns a list of all the tables with names that match the data pattern
     """
 
-    print(f"Copying content from {file.name}")
+    query = """
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_name ~ '^data_202[0-9]_[a-z]{3}$';
+    """
 
     try:
-        with file.open() as f:
-            with cur.copy(sql_copy) as copy:
-                copy.write(f.read())
+        cur.execute(query)
     except Exception as e:
-        print(f"{type(e).__name__} at file {file.name}: {e}")
-        exit(1)
+        print(f"{type(e).__name__}: {e}", file=stderr)
+        return None
 
-    print(f"Copied content from {file.name}")
+    return [row[0] for row in cur.fetchall()]
 
 
 if __name__ == "__main__":
