@@ -15,7 +15,13 @@ def main():
             table_names = get_table_names(cur)
             if not table_names:
                 return 1
-            print(table_names)
+
+            try:
+                create_table(cur, "customers")
+                insert_rows(cur, table_names, "customers")
+            except Exception as e:
+                print(f"{type(e).__name__}: {e}")
+                return 1
 
 
 def get_table_names(cur: psycopg.Cursor) -> list:
@@ -29,12 +35,52 @@ def get_table_names(cur: psycopg.Cursor) -> list:
     """
 
     try:
+        print("Fetching table names")
         cur.execute(query)
     except Exception as e:
         print(f"{type(e).__name__}: {e}", file=stderr)
         return None
 
     return [row[0] for row in cur.fetchall()]
+
+
+def create_table(cur: psycopg.Cursor, name: str) -> None:
+    """Creates the table with name"""
+
+    query = f"""
+        CREATE TABLE {name} (
+            id SERIAL PRIMARY KEY,
+            event_time timestamp with time zone,
+            event_type event,
+            product_id integer,
+            price real,
+            user_id bigint,
+            user_session char(36)
+        );
+    """
+
+    print(f"Creating {name} table")
+    cur.execute(query)
+
+
+def insert_rows(cur: psycopg.Cursor, sources: list, dest: str) -> None:
+    """Joins all the sources tables into the dest table"""
+
+    rows = "event_time, event_type, product_id, price, user_id, user_session"
+
+    union_string = ""
+    for i in sources:
+        union_string += f"SELECT {rows} from {i}\nUNION ALL\n"
+    union_string = union_string.removesuffix("\nUNION ALL\n")
+    union_string += ";"
+
+    query = f"""
+        INSERT INTO {dest} ({rows})
+        {union_string}
+    """
+
+    print(f"Joining {sources} into {dest}")
+    cur.execute(query)
 
 
 if __name__ == "__main__":
