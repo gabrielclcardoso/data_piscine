@@ -27,5 +27,5 @@ Duplicates AS (
 DELETE FROM customers
 WHERE id IN (SELECT id FROM Duplicates);
 
--- ID 130 and 131 are duplicates and ID 10 and 11 aswell
+-- IDs 37 and 38 are duplicates and IDs 42 and 43 aswell
 -- time psql -h localhost -U gcorreia -d piscineds -a -f remove_duplicates.sql
