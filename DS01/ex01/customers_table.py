@@ -12,16 +12,33 @@ def main():
 
     with psycopg.connect(**db_connection_params) as conn:
         with conn.cursor() as cur:
-            table_names = get_table_names(cur)
-            if not table_names:
-                return 1
 
             try:
+                insert_february(cur)
+                table_names = get_table_names(cur)
                 create_table(cur, "customers")
                 insert_rows(cur, table_names, "customers")
             except Exception as e:
                 print(f"{type(e).__name__}: {e}")
                 return 1
+
+
+def insert_february(cur: psycopg.Cursor) -> None:
+    """Append additional february data to january table"""
+
+    sql_copy = """
+        COPY data_2023_jan
+        FROM STDIN
+        WITH (
+            FORMAT CSV,
+            HEADER TRUE
+        );
+    """
+
+    print("inserting february data")
+    with open("data_2023_feb.csv") as f:
+        with cur.copy(sql_copy) as copy:
+            copy.write(f.read())
 
 
 def get_table_names(cur: psycopg.Cursor) -> list:
@@ -34,12 +51,8 @@ def get_table_names(cur: psycopg.Cursor) -> list:
         WHERE table_name ~ '^data_202[0-9]_[a-z]{3}$';
     """
 
-    try:
-        print("Fetching table names")
-        cur.execute(query)
-    except Exception as e:
-        print(f"{type(e).__name__}: {e}", file=stderr)
-        return None
+    print("Fetching table names")
+    cur.execute(query)
 
     return [row[0] for row in cur.fetchall()]
 
