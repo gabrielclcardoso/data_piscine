@@ -13,9 +13,12 @@ DB_CONN_PARAMS = {
 def main():
     with psycopg.connect(**DB_CONN_PARAMS) as conn:
         with conn.cursor() as cur:
-            customers = get_customers(cur)
-            total_sales = get_sales(cur)
-            average_spent = get_avg_spend(cur)
+            try:
+                customers = get_customers(cur)
+                total_sales = get_sales(cur)
+                average_spent = get_avg_spend(cur)
+            except Exception as e:
+                print(f"{type(e).__name__}: {e}")
 
     plot_customers(customers)
     plot_sales(total_sales)
