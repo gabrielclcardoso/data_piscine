@@ -135,7 +135,6 @@ def plot_avg_boxplot(avg: list[float]) -> None:
 
     ax.yaxis.set_visible(False)
     ax.grid(True)
-    # ax.set_xlim(-25, 125)
 
     bplot = ax.boxplot(avg, orientation="horizontal", widths=0.9,
                        patch_artist=True, sym="gD", zorder=2)
