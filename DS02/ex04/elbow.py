@@ -36,7 +36,7 @@ def get_data(cur: psycopg.Cursor) -> list[psycopg.rows.Row]:
     GROUP BY user_id, event_time;
     """
 
-    print("Collecting all purchase prices")
+    print("Collecting customer data")
     cur.execute(query)
     data = cur.fetchall()
     return data
