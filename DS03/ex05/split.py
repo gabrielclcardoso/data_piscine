@@ -1,13 +1,12 @@
+import sys
+
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
 
-TRAIN_FILE = "Train_knight.csv"
-
-
 def main():
     try:
-        data = pd.read_csv(TRAIN_FILE)
+        data = pd.read_csv(sys.argv[1])
     except Exception as e:
         print(f"{type(e).__name__}: {e}")
         return 1
