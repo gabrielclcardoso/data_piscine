@@ -16,8 +16,7 @@ def main():
     numeric_cols = train_data.select_dtypes(include=np.number).columns
     features = train_data[numeric_cols]
 
-    features = reduce_features(features, 5)
-    print(f"\nFinal Features:\n{features.columns}")
+    reduce_features(features, 5)
 
 
 def calculate_vif(features: pd.DataFrame) -> pd.DataFrame:
@@ -43,6 +42,7 @@ def reduce_features(features: pd.DataFrame, threshhold: int) -> pd.DataFrame:
         features = features.drop(vif["VIF"].idxmax(), axis=1)
         vif = calculate_vif(features)
 
+    print(f"\nFinal Features:\n{vif}")
     return features
 
 
